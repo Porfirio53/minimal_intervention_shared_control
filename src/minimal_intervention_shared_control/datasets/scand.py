@@ -19,6 +19,49 @@ class SCANDRun:
 REQUIRED_COLUMNS = ("run_id", "driver_id", "timestamp", "x", "y", "yaw", "v", "omega")
 
 
+def causal_hold_indices(
+    source_timestamps: np.ndarray, query_timestamps: np.ndarray
+) -> np.ndarray:
+    """Return the latest source index at or before each query, or -1."""
+    source = np.asarray(source_timestamps, dtype=float)
+    query = np.asarray(query_timestamps, dtype=float)
+    if source.ndim != 1 or query.ndim != 1 or len(source) == 0:
+        raise ValueError("causal hold expects non-empty 1-D source timestamps")
+    if not np.all(np.isfinite(source)) or not np.all(np.isfinite(query)):
+        raise ValueError("causal hold timestamps must be finite")
+    if np.any(np.diff(source) < 0) or np.any(np.diff(query) < 0):
+        raise ValueError("causal hold timestamps must be sorted")
+    return np.searchsorted(source, query, side="right") - 1
+
+
+def jackal_ps4_joy_to_command(
+    axes: list[float] | np.ndarray,
+    buttons: list[int] | np.ndarray,
+) -> tuple[float, float]:
+    """Reconstruct the Jackal command from its official PS4 teleop mapping.
+
+    SCAND records ``/bluetooth_teleop/joy`` rather than the derived Twist. The
+    Clearpath configuration used during collection maps axis 1 to linear speed,
+    axis 0 to yaw rate, button 4 to normal mode, and button 5 to turbo mode.
+    Normal/turbo linear scales are 0.4/2.0 m/s and angular scale is 1.4 rad/s.
+    """
+    axes_array = np.asarray(axes, dtype=float)
+    buttons_array = np.asarray(buttons, dtype=int)
+    if axes_array.ndim != 1 or len(axes_array) <= 1:
+        raise ValueError("Jackal PS4 Joy message must contain axes 0 and 1")
+    if buttons_array.ndim != 1 or len(buttons_array) <= 5:
+        raise ValueError("Jackal PS4 Joy message must contain buttons 4 and 5")
+    if not np.all(np.isfinite(axes_array)):
+        raise ValueError("Jackal PS4 Joy axes must be finite")
+    if buttons_array[5]:
+        linear_scale = 2.0
+    elif buttons_array[4]:
+        linear_scale = 0.4
+    else:
+        return 0.0, 0.0
+    return float(axes_array[1] * linear_scale), float(axes_array[0] * 1.4)
+
+
 def load_scand_csv(path: str | Path) -> list[SCANDRun]:
     """Load the normalized output produced by scripts/preprocess_scand.py."""
     with Path(path).open(newline="", encoding="utf-8") as stream:

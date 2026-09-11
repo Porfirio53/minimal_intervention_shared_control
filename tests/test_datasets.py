@@ -3,6 +3,8 @@ from pathlib import Path
 import numpy as np
 
 from minimal_intervention_shared_control.datasets.scand import (
+    causal_hold_indices,
+    jackal_ps4_joy_to_command,
     load_scand_csv,
     split_runs,
 )
@@ -25,6 +27,26 @@ def test_scand_loader_keeps_whole_runs(tmp_path: Path) -> None:
     assert [run.run_id for run in train] == ["r1"]
     assert validation == []
     assert [run.driver_id for run in test] == ["d2"]
+
+
+def test_scand_jackal_ps4_mapping_matches_clearpath_configuration() -> None:
+    axes = [0.5, -0.25, 0, 0, 0, 0, 0, 0]
+    disabled = [0] * 13
+    normal = disabled.copy()
+    normal[4] = 1
+    turbo = normal.copy()
+    turbo[5] = 1
+
+    assert jackal_ps4_joy_to_command(axes, disabled) == (0.0, 0.0)
+    assert jackal_ps4_joy_to_command(axes, normal) == (-0.1, 0.7)
+    assert jackal_ps4_joy_to_command(axes, turbo) == (-0.5, 0.7)
+
+
+def test_scand_command_hold_never_selects_a_future_command() -> None:
+    indices = causal_hold_indices(
+        np.array([1.0, 2.0, 4.0]), np.array([0.5, 1.0, 1.9, 2.0, 3.9, 4.0])
+    )
+    np.testing.assert_array_equal(indices, [-1, 0, 0, 1, 1, 2])
 
 
 def test_thor_loader_groups_and_sorts_tracks(tmp_path: Path) -> None:

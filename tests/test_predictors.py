@@ -20,6 +20,21 @@ def test_human_ar_fits_constant_command() -> None:
     assert np.all(np.linalg.eigvalsh(prediction.covariance) > 0)
 
 
+def test_human_ar_fit_sequences_never_builds_cross_run_windows() -> None:
+    first = np.tile([0.5, 0.1], (4, 1))
+    second = np.tile([-0.5, -0.1], (5, 1))
+    model = HumanAR(order=2).fit_sequences([first, second])
+    assert model.training_samples_ == (len(first) - 2) + (len(second) - 2)
+
+
+def test_human_ar_propagates_linear_model_covariance() -> None:
+    model = HumanAR(order=1)
+    model.coef_ = np.array([[0.5, 0.0], [0.0, 0.5], [0.0, 0.0]])
+    model.residual_cov_ = np.eye(2)
+    prediction = model.predict(np.zeros((1, 2)), horizon=2)
+    np.testing.assert_allclose(prediction.covariance, [np.eye(2), np.eye(2) * 1.25])
+
+
 def test_constant_velocity_prediction() -> None:
     model = ConstantVelocityPredictor(process_std=0.1)
     velocity = model.fit_velocity(np.array([[0.0, 0.0], [0.2, 0.4]]), dt=0.2)
