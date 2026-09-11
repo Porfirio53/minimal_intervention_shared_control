@@ -14,3 +14,4 @@ datasets/thor/raw/
 datasets/thor/processed/
 docs/
 datasets/
+.vscode/
