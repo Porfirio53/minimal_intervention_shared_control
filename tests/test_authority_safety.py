@@ -61,6 +61,22 @@ def test_second_stage_cannot_exceed_stage_one_budget_bound() -> None:
     assert result.intervention_budget <= result.budget_bound + 1e-6
 
 
+def test_secondary_task_objective_uses_available_budget_without_breaking_it() -> None:
+    result = LexicographicAuthority(
+        tolerance=1.0, smooth_weight=0.0, input_weight=0.0
+    ).solve(
+        np.empty((0, 1)),
+        np.empty(0),
+        task_offset=np.zeros((1, 2)),
+        task_sensitivity=np.array([[[1.0, 0.0]]]),
+        task_positions=np.array([[1.0, 0.0]]),
+        task_weight=1.0,
+    )
+    assert not result.used_fallback
+    assert result.alpha[0] > 0.9
+    assert result.intervention_budget <= result.budget_bound + 1e-6
+
+
 def test_lexicographic_qp_reports_infeasible_problem() -> None:
     result = LexicographicAuthority().solve(np.zeros((1, 2)), np.ones(1))
     assert result.used_fallback

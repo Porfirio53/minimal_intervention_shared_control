@@ -66,6 +66,7 @@ def test_simulation_reports_explicit_qp_and_risk_diagnostics() -> None:
         "obstacle_prediction_source",
         "scenario_obstacle_source",
         "upper_updated",
+        "upper_relinearized",
     } <= row.keys()
 
 

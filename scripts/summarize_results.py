@@ -24,6 +24,7 @@ PRIMARY_METRICS = (
     "upper_infeasible_rate",
     "secondary_fallback_rate",
     "filter_infeasible_rate",
+    "upper_relinearization_rate",
     "first_authority_time",
     "first_filter_time",
     "solve_time_p50",

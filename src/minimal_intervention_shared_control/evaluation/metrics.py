@@ -49,6 +49,16 @@ def trajectory_metrics(
         "filter_infeasible_rate": float(
             np.mean([bool(row.get("filter_infeasible", False)) for row in records])
         ),
+        "upper_relinearization_rate": float(
+            np.mean(
+                [
+                    bool(row.get("upper_relinearized", False))
+                    for row in records
+                    if bool(row.get("upper_updated", False))
+                ]
+                or [False]
+            )
+        ),
         "mean_human_information_age": float(
             np.mean(
                 [

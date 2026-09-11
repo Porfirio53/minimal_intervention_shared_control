@@ -44,6 +44,11 @@ def secondary_objective_matrices(
     input_weight: float = 1.0,
     authority_weight: float = 1e-6,
     control_scales: np.ndarray | None = None,
+    task_offset: np.ndarray | None = None,
+    task_sensitivity: np.ndarray | None = None,
+    task_positions: np.ndarray | None = None,
+    task_weight: float = 0.0,
+    position_scales: np.ndarray | None = None,
 ) -> tuple[sparse.csc_matrix, np.ndarray]:
     """Build the implemented subset of paper equation (19)."""
     difference_matrix = sparse.eye(horizon, format="lil")
@@ -77,6 +82,40 @@ def secondary_objective_matrices(
         difference_matrix.T @ difference_matrix
     ) + sparse.diags(input_weight * modification_cost + authority_weight, format="csc")
     linear = -smooth_weight * (difference_matrix.T @ difference_target)
+    if task_weight < 0:
+        raise ValueError("task weight must be non-negative")
+    task_values = (task_offset, task_sensitivity, task_positions)
+    if task_weight > 0 or any(value is not None for value in task_values):
+        if any(value is None for value in task_values):
+            raise ValueError(
+                "task objective requires offset, sensitivity, and positions"
+            )
+        offset = np.asarray(task_offset, dtype=float)
+        sensitivity = np.asarray(task_sensitivity, dtype=float)
+        target = np.asarray(task_positions, dtype=float)
+        position_scale = (
+            np.ones(2)
+            if position_scales is None
+            else np.asarray(position_scales, dtype=float)
+        )
+        if (
+            offset.shape != (horizon, 2)
+            or sensitivity.shape != (horizon, horizon, 2)
+            or target.shape != (horizon, 2)
+            or position_scale.shape != (2,)
+            or np.any(position_scale <= 0)
+        ):
+            raise ValueError("task objective arrays have incompatible shapes")
+        task_matrix = np.empty((2 * horizon, horizon))
+        for index in range(horizon):
+            task_matrix[2 * index : 2 * index + 2] = (
+                sensitivity[index].T / position_scale[:, None]
+            )
+        task_residual = ((offset - target) / position_scale).reshape(-1)
+        quadratic = (
+            quadratic + task_weight * sparse.csc_matrix(task_matrix.T @ task_matrix)
+        ).tocsc()
+        linear = linear + task_weight * (task_matrix.T @ task_residual)
     return quadratic, np.asarray(linear).reshape(-1)
 
 
@@ -151,6 +190,10 @@ class LexicographicAuthority:
         *,
         step_durations: np.ndarray | None = None,
         previous_alpha: float = 0.0,
+        task_offset: np.ndarray | None = None,
+        task_sensitivity: np.ndarray | None = None,
+        task_positions: np.ndarray | None = None,
+        task_weight: float = 0.0,
     ) -> AuthorityResult:
         g, b = np.asarray(g, dtype=float), np.asarray(b, dtype=float)
         if g.ndim != 2 or b.shape != (len(g),):
@@ -198,6 +241,10 @@ class LexicographicAuthority:
             input_weight=self.input_weight,
             authority_weight=self.authority_weight,
             control_scales=self.control_scales,
+            task_offset=task_offset,
+            task_sensitivity=task_sensitivity,
+            task_positions=task_positions,
+            task_weight=task_weight,
         )
         budget_row = sparse.csc_matrix(weights.reshape(1, -1))
         constraints2 = sparse.vstack(

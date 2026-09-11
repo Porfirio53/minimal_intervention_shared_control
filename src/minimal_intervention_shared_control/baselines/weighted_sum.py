@@ -23,6 +23,10 @@ def weighted_sum_authority(
     step_durations: np.ndarray | None = None,
     previous_alpha: float = 0.0,
     control_scales: np.ndarray | None = None,
+    task_offset: np.ndarray | None = None,
+    task_sensitivity: np.ndarray | None = None,
+    task_positions: np.ndarray | None = None,
+    task_weight: float = 0.0,
 ) -> AuthorityResult:
     """One-stage w_alpha I_alpha + J_secondary baseline from the design."""
     g, b = np.asarray(g, dtype=float), np.asarray(b, dtype=float)
@@ -38,6 +42,10 @@ def weighted_sum_authority(
         smooth_weight=smooth_weight,
         input_weight=input_weight,
         control_scales=control_scales,
+        task_offset=task_offset,
+        task_sensitivity=task_sensitivity,
+        task_positions=task_positions,
+        task_weight=task_weight,
     )
     q = secondary_q + intervention_weight * weights
     identity = sparse.eye(horizon, format="csc")

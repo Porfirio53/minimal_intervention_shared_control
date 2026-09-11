@@ -28,7 +28,9 @@ def test_runtime_keeps_nominal_control_when_execution_constraints_are_satisfied(
     )
     output = runtime.step(value)
     assert output.allocation.minimum_budget == 0.0
-    np.testing.assert_allclose(output.alpha, 0.0, atol=2e-6)
+    assert (
+        output.allocation.intervention_budget <= output.allocation.budget_bound + 1e-6
+    )
     np.testing.assert_allclose(
         output.filtered_control.as_array(), output.nominal_control.as_array()
     )

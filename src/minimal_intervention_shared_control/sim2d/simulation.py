@@ -33,6 +33,7 @@ class SimulationConfig:
     network_condition: str | None = None
     method: str = "ours"
     seed: int = 0
+    risk_overrides: dict[str, float] | None = None
 
 
 @dataclass(frozen=True)
@@ -82,6 +83,11 @@ def run_simulation(
         raise ValueError(f"method must be one of {METHODS}")
     scene = make_scenario(scenario) if isinstance(scenario, str) else scenario
     vehicle, risk = load_default("vehicle"), load_default("risk")
+    if config.risk_overrides:
+        unknown = set(config.risk_overrides) - set(risk)
+        if unknown:
+            raise ValueError(f"unknown risk overrides: {sorted(unknown)}")
+        risk = {**risk, **config.risk_overrides}
     condition = config.network_condition or scene.network_condition
     downlink, uplink = _delay_models(condition)
     network = BidirectionalNetwork(downlink, uplink, seed=config.seed)
@@ -194,6 +200,7 @@ def run_simulation(
                 "secondary_fallback": allocation.secondary_fallback,
                 "qp_status": allocation.status,
                 "upper_updated": output.upper_updated,
+                "upper_relinearized": output.upper_relinearized,
                 "stage1_status": allocation.stage1_status,
                 "stage2_status": allocation.stage2_status,
                 "minimum_budget": allocation.minimum_budget,

@@ -13,4 +13,8 @@ clock_error_bound: 0.005
 model_error_bound: 0.01
 actuation_error_bound: 0.01
 state_confidence_beta: 2.448
-lexicographic_tolerance: 0.001
+lexicographic_tolerance: 0.01
+secondary_smooth_weight: 0.2
+secondary_input_weight: 1.0
+secondary_task_weight: 0.0
+fallback_relinearization_alpha: 1.0

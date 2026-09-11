@@ -1,0 +1,32 @@
+{
+  "formal_seeds_used_for_tuning": false,
+  "formal_seed_range": [0, 49],
+  "development_seeds": [920001, 920002],
+  "validation_seeds": [930001, 930002],
+  "selection_order": [
+    "minimum collision rate",
+    "maximum success rate",
+    "minimum filter infeasible rate",
+    "minimum upper infeasible rate",
+    "minimum intervention budget"
+  ],
+  "selected": {
+    "lexicographic_tolerance": 0.01,
+    "secondary_smooth_weight": 0.2,
+    "secondary_input_weight": 1.0,
+    "secondary_task_weight": 0.0,
+    "fallback_relinearization_alpha": 1.0
+  },
+  "validation": {
+    "runs": 56,
+    "collision_rate": 0.0,
+    "success_rate": 0.6428571428571429,
+    "filter_infeasible_rate": 0.057891600485818144,
+    "upper_infeasible_rate": 0.11549348087146524,
+    "secondary_fallback_rate": 0.0,
+    "intervention_budget": 0.11749553104539759,
+    "nominal_modification": 0.19247629696625693,
+    "filter_modification": 0.03426637900868477
+  },
+  "scope": "Best validated candidate in the documented finite search, not a claim of global optimality or a formal E1 result."
+}

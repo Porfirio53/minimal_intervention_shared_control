@@ -28,12 +28,12 @@
 | 式(9)：`Sigma_Z` 与交叉协方差 | `risk/chance_constraint.py::relative_position_covariance` | 支持完整交叉项；缺省不允许静默设为零 | Conflict：直接相加，隐式假设独立 | 是 | 确定性仿真显式声明执行与障碍预测误差独立；真实数据需验证或改用保守标准差和界 |
 | 式(10)：半空间机会裕量 | `risk/chance_constraint.py::chance_margin`; `runtime.py::_build_prediction_problem` | 固定单位法向，距离中加入 `kappa*sqrt(n^T Sigma n)` | Exact/Equivalent | 是，补显式法向 | 标准差而非方差进入裕量；固定法向是论文指定的局部凸化条件 |
 | 式(13)：共享输入关于 `alpha` 仿射 | `risk/prediction_tube.py::blend_controls` | 向量化实现同一公式 | Equivalent | 否 | 无额外残差控制 `r_i` |
-| 式(14)–(17)：局部线性化、`S` 与 `g` | `authority/linearization.py::affine_state_prediction`; `authority/sensitivity.py::project_position_rows`; `runtime.py::_build_prediction_problem` | 使用论文 Jacobian 凝聚为 `x=offset+S alpha`，再投影 `g=n^T S` | Conflict：使用非线性有限差分，且每次固定全自主参考 | 是 | 成功求解后移位上一可行 `alpha` 作为下一参考；当前只做一次顺序凸化 |
-| 线性化启动参考 | `runtime.py::SharedControlRuntime` | 首周期使用全自主序列，之后移位上一可行解 | Unsupported assumption | 部分修改 | 论文没有规定“尚无上一可行轨迹”时的初始化；全自主启动需作者确认 |
+| 式(14)–(17)：局部线性化、`S` 与 `g` | `authority/linearization.py::affine_state_prediction`; `authority/sensitivity.py::project_position_rows`; `runtime.py::_build_prediction_problem` | 使用论文 Jacobian 凝聚为 `x=offset+S alpha`，再投影 `g=n^T S` | Conflict：使用非线性有限差分，且每次固定全自主参考 | 是 | 成功求解后移位上一可行 `alpha` 作为下一参考；局部问题无解时按论文允许的计算预算追加一次端点重线性化，不放宽硬约束 |
+| 线性化启动参考 | `runtime.py::SharedControlRuntime` | 首周期无上一可行解时使用零自主权序列，之后移位上一可行解 | Unsupported assumption | 是 | 论文没有规定首次初始化；选择零序列与第一级最小自主权目标一致，且不改变任何硬约束 |
 | 式(18)：控制权可行域 | `authority/constraints.py::build_authority_constraints`; `authority/lexicographic_qp.py` | 支持机会、输入、输入变化率、控制权变化率、轮速、走廊、状态/控制可信域等硬约束；仿真当前启用机会约束和输入上下界 | Missing/Conflict | 是 | 论文/配置未给实际变化率、轮速、走廊和可信域数值，因此这些项没有在仿真中臆造启用，仍属重要 Missing |
-| 式(19)：次级目标 | `authority/lexicographic_qp.py::secondary_objective_matrices` | 实现控制权平滑、相对人工输入修改及极小唯一性正则项 | Conflict/Approximation | 是 | 删除无论文依据的线速度差目标；虽已有校准 `Sigma_H`，但意图轨迹保持和任务性能项仍未启用，因为论文没有给出对应权重与任务参考 |
+| 式(19)：次级目标 | `authority/lexicographic_qp.py::secondary_objective_matrices` | 实现控制权平滑、相对人工输入修改、任务轨迹项及极小唯一性正则项 | Conflict/Approximation | 是 | 删除无论文依据的线速度差目标；任务项以自主局部计划作 `p_task` 的能力已实现，但开发/验证选择 `w_P=0`；意图轨迹保持项仍未启用，因为论文没有给出 `w_H,W_i,D_p` 的实验数值 |
 | 式(20)：第一级最低累计自主权 | `authority/lexicographic_qp.py::budget_weights, LexicographicAuthority.solve` | 归一化 `Delta_i/T_H`，零 Hessian 的严格 LP | Conflict：曾加入小二次正则且预算量纲不一致 | 是 | OSQP 以零 Hessian 求解 LP，与线性规划数学等价；出口额外复核全部硬约束残差 |
-| 式(21)：第二级预算 | `LexicographicAuthority.solve` | 独立第二次求解并硬约束 `I_alpha<=A*+delta_alpha` | Conflict：旧预算与 `delta_alpha` 单位不一致 | 是 | `lexicographic_tolerance=0.001` 是允许的归一化额外预算，但数值不是论文实验给定值 |
+| 式(21)：第二级预算 | `LexicographicAuthority.solve` | 独立第二次求解并硬约束 `I_alpha<=A*+delta_alpha` | Conflict：旧预算与 `delta_alpha` 单位不一致 | 是 | 在不使用正式 seed 0–49 的开发/验证中选择 `delta_alpha=0.01`；它是工程标定值，不是论文初稿给定值 |
 | 上层不可行处理 | `LexicographicAuthority.solve`; `runtime.py::SharedControlRuntime.step` | 显式保存 stage 状态和不可行率；不增加松弛；把标记为不可行的名义命令交给安全层 | Conflict：曾静默返回 `alpha=0` 作为普通解 | 是 | 当前平台后备仍以 `alpha=0` 生成名义命令；论文没有唯一指定上层不可行后的名义命令，需作者确认 |
 | 式(23)–(24)：源时刻相对状态与年龄传播 | `safety/robust_cbf_qp.py::RelativeStateObservation.mean_at`; `safety/observations.py` | 保存源时刻相对位置/速度并传播到当前时刻 | Conflict：旧接口直接使用当前位置并另加年龄半径 | 是 | 2-D 仿真没有真实传感器 FIFO，使用常速度反向构造源时刻估计再正向传播；仅适用于当前恒速障碍仿真 |
 | 式(25)：协方差传播 | `RelativeStateObservation.covariance_at` | 使用 `P_pp+tau(P_pv+P_vp)+tau^2 P_vv`，并验证联合协方差半正定 | Missing | 是 | 仿真协方差为无交叉项的各向同性模型，真实系统需估计四个块 |
@@ -66,7 +66,7 @@
 2. 障碍预测采用 THÖR 训练/验证得到的短时单峰常速度高斯模型；它只适用于当前短时动态障碍场景，不表达多模态行人意图。crossing 的真值来自 held-out THÖR track，仅刚体变换其坐标。
 3. `Sigma_E` 是固定各向同性位置协方差上界，没有随 `alpha` 变化；这符合“求解前冻结协方差”的凸化条件，但数值尚未由执行实验校准。
 4. 仿真中 `Sigma_E` 与 `Sigma_O` 的独立性被显式配置为真；真实传感/定位系统若存在共同误差源，必须提供交叉协方差或采用保守标准差和界。
-5. 上层每周期只做一次顺序凸化；成功后使用移位解热启动，不声称原始非线性问题的全局最优。
+5. 上层先在移位的上一可行解处做局部凸化；若局部问题无解，最多在相反控制权端点追加一次重线性化。该固定计算预算符合论文允许的实现范围，不声称原始非线性问题的全局最优。
 6. 安全仿真适配器从当前精确仿真状态按恒速模型反推源时刻相对状态，以检验年龄传播公式；Windows 传感器接入必须改为真实源时间戳观测。
 7. 末级误差集合把下一步视为同一源观测继续老化到 `tau^S+T_s`；论文没有给出传感器在下一周期刷新时的唯一误差集合参数化。
 
@@ -74,7 +74,7 @@
 
 1. 式(18)所需的真实输入变化率、控制权变化率、轮速上限、凸可行驶走廊、状态/控制可信域数值均未在论文或配置中给出。构造器已实现，但正式仿真不能在没有物理依据时自行填数。
 2. 式(19)排版中平滑项与 `w_u` 项之间、意图项与 `w_P` 项之间缺少可见加号。上下文表明应为求和，但排版应由作者确认。
-3. 论文没有规定首次求解没有上一可行轨迹时的线性化参考。当前采用全自主启动，仅是显式工程初始化。
+3. 论文没有规定首次求解没有上一可行轨迹时的线性化参考。当前采用零自主权启动，并在局部无解时允许一次端点重线性化；二者均是显式工程初始化策略。
 4. 论文要求上层不可行时交给安全层或平台后备流程，但没有指定此时 `u_N`。当前使用人工候选 (`alpha=0`) 并显式标记不可行，不把它当作优化解。
 5. `E^+_{j,k}` 如何结合下一次传感器刷新、时钟误差和执行误差没有唯一数值模型。当前采用同一源观测老化 `T_s` 的保守实现。
 6. 障碍最大速度、最大命令保持间隔、执行器变化率和全部不确定性界缺少实测标定。`cbf_gamma=0.8` 满足论文 `0<gamma<=1`，但数值本身并非论文实验给定。
@@ -89,7 +89,7 @@
 - 数据核验：13 个 SCAND Jackal bag 均可读取并转换；13 个 CSV 一一对应 8 个 A run 和 5 个 B run，共 44,452 行。时间戳严格递增，状态/控制无 NaN/Inf，且 `|v|<=2.0 m/s`、`|omega|<=1.4 rad/s`。13 个 THÖR 3-D TSV 的官方 MD5 均通过，转换得到 1,861,429 个观测及 1,116 个连续 track segment。
 - E0 SCAND：seed 17，在 6 个 A 训练 run 内按未校准 NLL 交叉验证选择 AR(3)，另用 2 个 A run 校准，全部 5 个 B run 仅作测试；1,825 个训练窗口、575 个校准样例、6,359 个测试样例。校准尺度 1.4018；测试 `ADE=0.3765`、`FDE=0.4938`（二者混合控制量纲，仅作辅助）、`MAE_v=0.3206 m/s`、`MAE_omega=0.1244 rad/s`、`NLL=0.7301`、90/95/99% 经验覆盖率为 90.88/93.47/96.14%。95% 覆盖未达到名义值，不使用测试数据二次校准。
 - E0 THÖR：在训练 recording 内选择 0.3 s 历史窗口，随后按完整 recording 进行 7/3/3 训练/校准/测试划分；19,460/7,058/7,479 个样例。测试 `ADE=0.1715 m`、`FDE=0.3498 m`、`NLL=-0.1719`、90/95/99% 经验覆盖率为 93.43/96.11/98.54%。
-- 全量测试：`63 passed`，语句覆盖率 `86%`。新增测试覆盖因果重采样、延迟回调中按 `r_m` 采样、单调平台时钟、首回调已有命令、20 Hz 上层节拍、无 run/recording 泄漏、无测试集校准、模型序列化、联合控制协方差到 `Sigma_H` 的传播、THÖR 刚体回放及平台运行时/安全接口。
+- 全量测试：`77 passed`，语句覆盖率 `86%`。新增测试覆盖因果重采样、延迟回调中按 `r_m` 采样、单调平台时钟、首回调已有命令、20 Hz 上层节拍、无 run/recording 泄漏、无测试集校准、任务轨迹项、两级预算、重线性化诊断、模型序列化、联合控制协方差到 `Sigma_H` 的传播、THÖR 刚体回放及平台运行时/安全接口。
 - 静态与格式：Ruff check 通过，64 个 Python 文件格式检查通过，`git diff --check` 通过。
 - 构建与导入：`compileall`、核心包导入及 `pip check` 通过。
 - 配对 smoke：四个场景、五种方法、相同 seed 17、每次 3 s，共 20 次运行。真实 THÖR crossing 中 `single_step` 与 `human_filter` 碰撞；其余 18 次未碰撞。Ours 在该单次 crossing 的最小净空为 0.033 m；单 seed 不能支持方法优越性的统计结论。

@@ -101,6 +101,7 @@ class StepOutput:
     filter_result: FilterResult
     risk_tube: PredictionRiskTube
     upper_updated: bool
+    upper_relinearized: bool
     upper_solve_time: float
     human_prediction_source: str
     obstacle_prediction_source: str
@@ -311,6 +312,10 @@ def _allocate(
     allocator: LexicographicAuthority,
     step_durations: np.ndarray,
     previous_alpha: float,
+    task_offset: np.ndarray,
+    task_sensitivity: np.ndarray,
+    task_positions: np.ndarray,
+    task_weight: float,
 ) -> AuthorityResult:
     horizon = len(human)
     if method == "human_filter":
@@ -332,6 +337,10 @@ def _allocate(
             autonomous,
             step_durations=step_durations,
             previous_alpha=previous_alpha,
+            task_offset=task_offset,
+            task_sensitivity=task_sensitivity,
+            task_positions=task_positions,
+            task_weight=task_weight,
         )
     if method == "weighted_sum":
         return weighted_sum_authority(
@@ -342,6 +351,12 @@ def _allocate(
             step_durations=step_durations,
             previous_alpha=previous_alpha,
             control_scales=allocator.control_scales,
+            smooth_weight=allocator.smooth_weight,
+            input_weight=allocator.input_weight,
+            task_offset=task_offset,
+            task_sensitivity=task_sensitivity,
+            task_positions=task_positions,
+            task_weight=task_weight,
         )
     return allocator.solve(
         matrix,
@@ -350,6 +365,10 @@ def _allocate(
         autonomous,
         step_durations=step_durations,
         previous_alpha=previous_alpha,
+        task_offset=task_offset,
+        task_sensitivity=task_sensitivity,
+        task_positions=task_positions,
+        task_weight=task_weight,
     )
 
 
@@ -409,6 +428,8 @@ class SharedControlRuntime:
         )
         self.allocator = LexicographicAuthority(
             tolerance=float(self.risk["lexicographic_tolerance"]),
+            smooth_weight=float(self.risk.get("secondary_smooth_weight", 0.2)),
+            input_weight=float(self.risk.get("secondary_input_weight", 1.0)),
             control_scales=control_scales,
         )
         self.safety = RobustCBFFilter(
@@ -426,7 +447,9 @@ class SharedControlRuntime:
         )
         self.buffer: TimestampBuffer[Control] = TimestampBuffer()
         self.authority = np.zeros(self.config.horizon)
-        self.linearization_reference = np.ones(self.config.horizon)
+        # With no previous feasible solution, initialize the local model at the
+        # minimum-intervention candidate. Later cycles shift the last feasible alpha.
+        self.linearization_reference = np.zeros(self.config.horizon)
         self.allocation = _fixed_authority_result(self.authority, "not-run")
         self.next_shared_update: float | None = None
         self.human_history: list[np.ndarray] = []
@@ -523,6 +546,7 @@ class SharedControlRuntime:
             self.next_shared_update = value.now
         update = value.now + 1e-12 >= self.next_shared_update
         solve_time = 0.0
+        relinearized = False
         if update:
             human, joint_covariance, self.human_prediction_source = (
                 _human_candidate_controls(
@@ -539,21 +563,25 @@ class SharedControlRuntime:
                 if joint_covariance is not None
                 else None
             )
-            prediction = _build_prediction_problem(
-                state,
-                float(self.vehicle["robot_radius"]),
-                value.obstacles,
-                human,
-                autonomous,
-                self.config.prediction_dt,
-                self.risk,
-                self.vehicle,
-                self.linearization_reference,
-                human_intent,
-                self.obstacle_predictor,
-            )
+
+            def build_prediction(reference: np.ndarray) -> PredictionAssembly:
+                return _build_prediction_problem(
+                    state,
+                    float(self.vehicle["robot_radius"]),
+                    value.obstacles,
+                    human,
+                    autonomous,
+                    self.config.prediction_dt,
+                    self.risk,
+                    self.vehicle,
+                    reference,
+                    human_intent,
+                    self.obstacle_predictor,
+                )
+
+            prediction = build_prediction(self.linearization_reference)
             started = time.perf_counter()
-            self.allocation = _allocate(
+            allocation = _allocate(
                 self.config.method,
                 human,
                 autonomous,
@@ -563,7 +591,50 @@ class SharedControlRuntime:
                 self.allocator,
                 np.full(self.config.horizon, self.config.prediction_dt),
                 float(self.authority[0]),
+                prediction.affine_prediction.offset[:, :2],
+                prediction.affine_prediction.sensitivity[:, :, :2],
+                prediction.risk_tube.autonomous_positions,
+                float(self.risk.get("secondary_task_weight", 0.0)),
             )
+            if allocation.used_fallback and self.config.method in {
+                "single_step",
+                "weighted_sum",
+                "ours",
+            }:
+                retry_alpha = float(
+                    self.risk.get("fallback_relinearization_alpha", 1.0)
+                )
+                if not 0.0 <= retry_alpha <= 1.0:
+                    raise ValueError(
+                        "fallback_relinearization_alpha must lie in [0, 1]"
+                    )
+                alternate_value = (
+                    retry_alpha
+                    if float(np.mean(self.linearization_reference)) < 0.5
+                    else 1.0 - retry_alpha
+                )
+                alternate_reference = np.full(self.config.horizon, alternate_value)
+                alternate_prediction = build_prediction(alternate_reference)
+                alternate_allocation = _allocate(
+                    self.config.method,
+                    human,
+                    autonomous,
+                    tau_h,
+                    alternate_prediction.constraints,
+                    len(value.obstacles),
+                    self.allocator,
+                    np.full(self.config.horizon, self.config.prediction_dt),
+                    float(self.authority[0]),
+                    alternate_prediction.affine_prediction.offset[:, :2],
+                    alternate_prediction.affine_prediction.sensitivity[:, :, :2],
+                    alternate_prediction.risk_tube.autonomous_positions,
+                    float(self.risk.get("secondary_task_weight", 0.0)),
+                )
+                relinearized = True
+                if not alternate_allocation.used_fallback:
+                    prediction = alternate_prediction
+                    allocation = alternate_allocation
+            self.allocation = allocation
             solve_time = time.perf_counter() - started
             self.authority = self.allocation.alpha
             self.last_tube = prediction.risk_tube
@@ -594,6 +665,7 @@ class SharedControlRuntime:
             filter_result=filtered,
             risk_tube=self.last_tube,
             upper_updated=update,
+            upper_relinearized=relinearized,
             upper_solve_time=solve_time,
             human_prediction_source=self.human_prediction_source,
             obstacle_prediction_source=self.obstacle_prediction_source,
