@@ -44,7 +44,7 @@
 | 式(37)：最终安全过滤 QP | `RobustCBFFilter.filter` | 两变量严格凸 QP，目标仅为相对 `u_N` 的最小修改，无松弛 | Conflict 后修正 | 是 | 无解时执行停止后备并标为 infeasible；停止对移动障碍不自动构成安全保证 |
 | `Sigma_H` 不得进入安全过滤器 | `RobustCBFFilter.filter` 接口及测试 | 安全接口只接收执行侧相对观测和误差协方差 | Conflict 风险已消除 | 是 | 有接口反射测试防止回归 |
 | 理论概率保证 | `predictors/calibration.py`; 测试与审计报告 | 仅提供校准工具，不宣称默认参数具有真实覆盖率 | Unsupported assumption 风险 | 是，收紧表述 | 未使用独立数据校准前，只能报告经验结果，不能声称式(12)/(40)概率保证 |
-| SCAND 人工控制先验与 `Sigma_H` | `scripts/run_e0.py`; `predictors/human_ar.py`; `dynamics/diff_drive.py::rollout_gaussian_controls`; `runtime.py` | 按完整 run 划分，A 驾驶员训练/验证、B 驾驶员测试；验证集校准后将联合控制协方差传播为位置协方差 | Missing | 是 | 当前为 13-run Jackal 子集；AR 未使用环境或局部目标特征，跨驾驶员 95% 经验覆盖率为 93.14%，不能声称达到严格 95% 保证 |
+| SCAND 人工控制先验与 `Sigma_H` | `scripts/run_e0.py`; `scripts/tune_e0.py`; `predictors/human_ar.py`; `dynamics/diff_drive.py::rollout_gaussian_controls`; `runtime.py` | 按完整 run 划分，A 驾驶员训练/验证、B 驾驶员测试；训练 run 内交叉验证选择阶数，验证集校准后将联合控制协方差传播为位置协方差 | Missing | 是 | 当前为 13-run Jackal 子集；AR 未使用环境或局部目标特征，跨驾驶员 95% 经验覆盖率为 93.47%，不能声称达到严格 95% 保证 |
 | THÖR 障碍预测与真实轨迹回放 | `scripts/run_e0.py`; `predictors/obstacle_cv.py`; `sim2d/scenarios.py::thor_crossing_obstacle` | 按完整 recording 划分；训练/验证拟合常速度协方差；held-out 轨迹仅经刚体变换后回放 | Missing | 是 | 常速度单峰高斯仅是短时工程近似；无外部处理数据时场景显式记录 `synthetic-fallback` |
 | WSL/Windows 共用算法入口 | `runtime.py::SharedControlRuntime.step, StepInput, StepOutput`; `sim2d/simulation.py` | 仿真与将来的 Webots 控制器使用同一无平台依赖的算法调用；输入显式分开上层障碍估计和执行侧安全观测 | Missing | 是 | Windows 仍需实现 Webots 传感、规划、手柄和执行适配器；不能复用 WSL 的 Linux `.venv` |
 
@@ -87,8 +87,8 @@
 本次审计提交前的验证结果如下。结果用于检查实现一致性和失败可见性，不用于宣称论文方法优于基线。
 
 - 数据核验：13 个 SCAND Jackal bag 均可读取并转换；13 个 CSV 一一对应 8 个 A run 和 5 个 B run，共 44,452 行。时间戳严格递增，状态/控制无 NaN/Inf，且 `|v|<=2.0 m/s`、`|omega|<=1.4 rad/s`。13 个 THÖR 3-D TSV 的官方 MD5 均通过，转换得到 1,861,429 个观测及 1,116 个连续 track segment。
-- E0 SCAND：seed 17，6 个 A run 训练、2 个 A run 验证校准、全部 5 个 B run 测试；1,813 个训练窗口、571 个验证样例、6,349 个测试样例。校准尺度 1.4235；测试 `ADE=0.3623`、`FDE=0.4756`（二者混合控制量纲，仅作辅助）、`MAE_v=0.3043 m/s`、`MAE_omega=0.1248 rad/s`、`NLL=0.7120`、90/95/99% 经验覆盖率为 90.31/93.14/96.17%。95% 覆盖未达到名义值，不使用测试数据二次校准。
-- E0 THÖR：按完整 recording 进行 7/3/3 训练/验证/测试划分；19,243/6,969/7,399 个样例。测试 `ADE=0.1780 m`、`FDE=0.3650 m`、`NLL=-0.1303`、90/95/99% 经验覆盖率为 94.61/96.80/98.80%。
+- E0 SCAND：seed 17，在 6 个 A 训练 run 内按未校准 NLL 交叉验证选择 AR(3)，另用 2 个 A run 校准，全部 5 个 B run 仅作测试；1,825 个训练窗口、575 个校准样例、6,359 个测试样例。校准尺度 1.4018；测试 `ADE=0.3765`、`FDE=0.4938`（二者混合控制量纲，仅作辅助）、`MAE_v=0.3206 m/s`、`MAE_omega=0.1244 rad/s`、`NLL=0.7301`、90/95/99% 经验覆盖率为 90.88/93.47/96.14%。95% 覆盖未达到名义值，不使用测试数据二次校准。
+- E0 THÖR：在训练 recording 内选择 0.3 s 历史窗口，随后按完整 recording 进行 7/3/3 训练/校准/测试划分；19,460/7,058/7,479 个样例。测试 `ADE=0.1715 m`、`FDE=0.3498 m`、`NLL=-0.1719`、90/95/99% 经验覆盖率为 93.43/96.11/98.54%。
 - 全量测试：`63 passed`，语句覆盖率 `86%`。新增测试覆盖因果重采样、延迟回调中按 `r_m` 采样、单调平台时钟、首回调已有命令、20 Hz 上层节拍、无 run/recording 泄漏、无测试集校准、模型序列化、联合控制协方差到 `Sigma_H` 的传播、THÖR 刚体回放及平台运行时/安全接口。
 - 静态与格式：Ruff check 通过，64 个 Python 文件格式检查通过，`git diff --check` 通过。
 - 构建与导入：`compileall`、核心包导入及 `pip check` 通过。

@@ -21,9 +21,13 @@ def trajectory_metrics(
     normalized_nominal = np.linalg.norm((nominal - human) / scales, axis=1)
     normalized_filter = np.linalg.norm((filtered - nominal) / scales, axis=1)
     clearances = np.array([row["clearance"] for row in records], dtype=float)
+    collision = bool(np.any(clearances <= 0.0))
+    reached_goal = bool(np.linalg.norm(states[-1, :2] - goal[:2]) <= success_radius)
+    authority_indices = np.flatnonzero(alpha > 1e-6)
+    filter_indices = np.flatnonzero(normalized_filter > 1e-6)
     metrics: dict[str, float | bool] = {
-        "collision": bool(np.any(clearances <= 0.0)),
-        "success": bool(np.linalg.norm(states[-1, :2] - goal[:2]) <= success_radius),
+        "collision": collision,
+        "success": reached_goal and not collision,
         "completion_time": float(duration),
         "minimum_clearance": float(clearances.min()),
         "intervention_budget": float(dt * np.sum(alpha) / duration),
@@ -53,6 +57,16 @@ def trajectory_metrics(
                     if np.isfinite(float(row["tau_h"]))
                 ]
             )
+        ),
+        "first_authority_time": (
+            float(dt * (authority_indices[0] + 1))
+            if len(authority_indices)
+            else float(duration)
+        ),
+        "first_filter_time": (
+            float(dt * (filter_indices[0] + 1))
+            if len(filter_indices)
+            else float(duration)
         ),
     }
     h_minus = [

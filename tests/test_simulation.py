@@ -65,6 +65,7 @@ def test_simulation_reports_explicit_qp_and_risk_diagnostics() -> None:
         "human_prediction_source",
         "obstacle_prediction_source",
         "scenario_obstacle_source",
+        "upper_updated",
     } <= row.keys()
 
 
@@ -113,3 +114,13 @@ def test_safety_isolation_replays_identical_nominal_commands() -> None:
         row["nominal"] for row in robust.records
     ]
     assert all(row["filtered"] == row["nominal"] for row in unfiltered.records)
+
+
+def test_network_anomaly_uses_accelerating_obstacle_ground_truth() -> None:
+    result = run_simulation(
+        "network_anomaly", SimulationConfig(duration=0.7, method="ours", seed=2)
+    )
+    assert all(
+        row["scenario_obstacle_source"] == "synthetic-accelerating"
+        for row in result.records
+    )

@@ -83,6 +83,29 @@ def _crossing_obstacle() -> tuple[ObstacleSpec | TrajectoryObstacleSpec, str]:
     return ObstacleSpec((1.5, -1.2), (0, 0.45), 0.27), "synthetic-fallback"
 
 
+def _accelerating_crossing_obstacle() -> TrajectoryObstacleSpec:
+    timestamps = np.arange(0.0, 12.0 + 0.05, 0.05)
+    acceleration_end = 2.5
+    accelerated_time = np.minimum(timestamps, acceleration_end)
+    initial_y = -0.9
+    initial_speed = 0.1
+    acceleration = 0.2
+    accelerated_y = (
+        initial_y
+        + initial_speed * accelerated_time
+        + 0.5 * acceleration * accelerated_time**2
+    )
+    terminal_speed = initial_speed + acceleration * acceleration_end
+    positions = np.column_stack(
+        [
+            np.full_like(timestamps, 1.55),
+            accelerated_y
+            + terminal_speed * np.maximum(timestamps - acceleration_end, 0.0),
+        ]
+    )
+    return TrajectoryObstacleSpec(timestamps, positions, 0.3)
+
+
 def make_scenario(name: str) -> Scenario:
     start = np.array([0.0, 0.0, 0.0])
     if name == "bend":
@@ -108,19 +131,28 @@ def make_scenario(name: str) -> Scenario:
             (obstacle,),
             obstacle_source=source,
         )
-    if name == "conflict":
-        human = np.array([[0, 0], [1.3, 0.8], [2.7, 0.8], [4, 0]], dtype=float)
-        autonomous = np.array([[0, 0], [1.3, -0.8], [2.7, -0.8], [4, 0]], dtype=float)
+    conflict_variant = "conflict_human_unsafe" if name == "conflict" else name
+    if conflict_variant.startswith("conflict_"):
+        human = np.array([[0, 0], [1.3, 1.6], [2.7, 1.6], [4, 0]], dtype=float)
+        autonomous = np.array([[0, 0], [1.3, -1.6], [2.7, -1.6], [4, 0]], dtype=float)
+        obstacle_positions = {
+            "conflict_both_safe": (2.0, 3.2),
+            "conflict_human_unsafe": (2.0, 1.55),
+            "conflict_autonomy_unsafe": (2.0, -1.55),
+            "conflict_blend_unsafe": (2.0, 0.0),
+        }
+        if conflict_variant not in obstacle_positions:
+            raise ValueError(f"unknown scenario: {conflict_variant}")
         return Scenario(
             name,
             start,
             human[-1],
             PolylinePath(human),
             PolylinePath(autonomous),
-            (ObstacleSpec((2.0, 0.75), (0, 0), 0.3),),
+            (ObstacleSpec(obstacle_positions[conflict_variant], (0, 0), 0.3),),
         )
     if name == "network_anomaly":
-        human = np.array([[0, 0], [1.5, 0], [3.0, 0]], dtype=float)
+        human = np.array([[0, 0], [1.0, 0], [1.55, -0.35], [3.0, 0]], dtype=float)
         autonomous = np.array([[0, 0], [1.2, 1.15], [2.2, 1.15], [3.0, 0]], dtype=float)
         return Scenario(
             name,
@@ -128,11 +160,21 @@ def make_scenario(name: str) -> Scenario:
             human[-1],
             PolylinePath(human),
             PolylinePath(autonomous),
-            (ObstacleSpec((1.55, -0.9), (0, 0.55), 0.3),),
+            (_accelerating_crossing_obstacle(),),
             "NJ",
             0.15,
+            "synthetic-accelerating",
         )
     raise ValueError(f"unknown scenario: {name}")
 
 
-SCENARIO_NAMES = ("bend", "crossing", "conflict", "network_anomaly")
+SCENARIO_NAMES = (
+    "bend",
+    "crossing",
+    "conflict",
+    "conflict_both_safe",
+    "conflict_human_unsafe",
+    "conflict_autonomy_unsafe",
+    "conflict_blend_unsafe",
+    "network_anomaly",
+)

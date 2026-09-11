@@ -1,5 +1,5 @@
 {
-  "calibration_scale": 1.4235120803346595,
+  "calibration_scale": 1.4018295345909442,
   "horizon": 15,
   "interval": 0.1,
   "limitations": [
@@ -8,22 +8,22 @@
     "SCAND has no network-delay labels; closed-loop experiments inject delays separately."
   ],
   "metrics": {
-    "ade": 0.3623420729958855,
-    "coverage_90": 0.9030713498188692,
-    "coverage_95": 0.9313592691762482,
-    "coverage_99": 0.9616737543970179,
-    "fde": 0.4755733511409432,
-    "mae_omega": 0.12483335853188816,
-    "mae_v": 0.30429888370433755,
-    "nll": 0.7119940553615142,
-    "rmse_omega": 0.2360056978695629,
-    "rmse_v": 0.47465419591109115
+    "ade": 0.3764584976767125,
+    "coverage_90": 0.9088221418462022,
+    "coverage_95": 0.9347067148922786,
+    "coverage_99": 0.9614404780625885,
+    "fde": 0.4938251043137161,
+    "mae_omega": 0.1244160097893238,
+    "mae_v": 0.32064058937286666,
+    "nll": 0.7301209560276288,
+    "rmse_omega": 0.23616577287739493,
+    "rmse_v": 0.4719787760345953
   },
-  "order": 5,
+  "order": 3,
   "prediction_space": "control [v_m_per_s, omega_rad_per_s]",
   "seed": 17,
   "status": "dataset-run",
-  "test_examples": 6349,
+  "test_examples": 6359,
   "test_runs": [
     "B_Jackal_GDC_Library_Sat_Nov_13_87",
     "B_Jackal_Library_Sanjac_Sat_Nov_13_88",
@@ -39,8 +39,8 @@
     "A_Jackal_SAC_GDC_Fri_Oct_29_14",
     "A_Jackal_SAC_SACindoor_Fri_Oct_29_15"
   ],
-  "training_windows": 1813,
-  "validation_examples": 571,
+  "training_windows": 1825,
+  "validation_examples": 575,
   "validation_runs": [
     "A_Jackal_Fountain_Mccombs_Thu_Oct_28_6",
     "A_Jackal_GDC_GDC_Fri_Oct_29_11"

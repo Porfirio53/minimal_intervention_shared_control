@@ -1,0 +1,94 @@
+{
+  "scand_candidates": [
+    {
+      "mae_omega": 0.12296318568143576,
+      "mae_v": 0.4273483159098086,
+      "nll": 0.8655409571774022,
+      "order": 1,
+      "selection_examples": 1753,
+      "selection_runs": 6
+    },
+    {
+      "mae_omega": 0.11650807326050808,
+      "mae_v": 0.40338438161698464,
+      "nll": 0.756421998924951,
+      "order": 3,
+      "selection_examples": 1741,
+      "selection_runs": 6
+    },
+    {
+      "mae_omega": 0.11640020415283468,
+      "mae_v": 0.3806271494514159,
+      "nll": 0.7875707416607719,
+      "order": 5,
+      "selection_examples": 1729,
+      "selection_runs": 6
+    },
+    {
+      "mae_omega": 0.11702576949551756,
+      "mae_v": 0.39069711740694035,
+      "nll": 0.8278592266961319,
+      "order": 8,
+      "selection_examples": 1711,
+      "selection_runs": 6
+    },
+    {
+      "mae_omega": 0.11723044954248756,
+      "mae_v": 0.37236870578934095,
+      "nll": 0.8088557997936918,
+      "order": 10,
+      "selection_examples": 1699,
+      "selection_runs": 6
+    }
+  ],
+  "seed": 17,
+  "selected_human_order": 3,
+  "selected_thor_history_seconds": 0.3,
+  "selection_rule": "minimum uncalibrated validation NLL; test partitions untouched",
+  "thor_candidates": [
+    {
+      "ade": 0.156219060388955,
+      "fde": 0.31797996127184813,
+      "history_seconds": 0.3,
+      "nll": -1.507808179852737,
+      "selection_examples": 5972,
+      "selection_recordings": [
+        "Exp_3_run_2",
+        "Exp_1_run_4"
+      ]
+    },
+    {
+      "ade": 0.15971640828971206,
+      "fde": 0.32397921603875196,
+      "history_seconds": 0.5,
+      "nll": -1.3396834421513295,
+      "selection_examples": 5901,
+      "selection_recordings": [
+        "Exp_3_run_2",
+        "Exp_1_run_4"
+      ]
+    },
+    {
+      "ade": 0.16183520984857366,
+      "fde": 0.33090456115702,
+      "history_seconds": 0.8,
+      "nll": -1.3811523684278373,
+      "selection_examples": 5804,
+      "selection_recordings": [
+        "Exp_3_run_2",
+        "Exp_1_run_4"
+      ]
+    },
+    {
+      "ade": 0.16515409833071357,
+      "fde": 0.33810749117257216,
+      "history_seconds": 1.0,
+      "nll": -1.318169663364382,
+      "selection_examples": 5736,
+      "selection_recordings": [
+        "Exp_3_run_2",
+        "Exp_1_run_4"
+      ]
+    }
+  ]
+}

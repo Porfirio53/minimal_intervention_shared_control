@@ -50,6 +50,20 @@ The default is intentionally a fast smoke configuration. Paper-scale runs should
 the duration and paired seeds through experiment YAML files. Raw SCAND and THOR data are
 not redistributed; see `datasets/*/README.md` for placement and conversion commands.
 
+After E0 preprocessing, select compact predictor settings without touching the held-out
+test partitions:
+
+```bash
+.venv/bin/python scripts/tune_e0.py
+```
+
+Run the complete resumable E1 matrix from `configs/experiments/paper.yaml` and generate
+paper-ready summaries under `results/full/`:
+
+```bash
+.venv/bin/python scripts/run_full_wsl.py --jobs 6
+```
+
 ## Platform boundary
 
 Everything under `src/minimal_intervention_shared_control`, dataset preprocessing, tests,

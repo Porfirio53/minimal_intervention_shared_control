@@ -193,6 +193,7 @@ def run_simulation(
                 "upper_infeasible": allocation.used_fallback,
                 "secondary_fallback": allocation.secondary_fallback,
                 "qp_status": allocation.status,
+                "upper_updated": output.upper_updated,
                 "stage1_status": allocation.stage1_status,
                 "stage2_status": allocation.stage2_status,
                 "minimum_budget": allocation.minimum_budget,

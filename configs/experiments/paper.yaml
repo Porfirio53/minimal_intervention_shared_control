@@ -1,5 +1,12 @@
 duration: 12.0
-scenarios: [bend, crossing, conflict, network_anomaly]
+scenarios:
+  - bend
+  - crossing
+  - conflict_both_safe
+  - conflict_human_unsafe
+  - conflict_autonomy_unsafe
+  - conflict_blend_unsafe
+  - network_anomaly
 methods: [delay_agreement, single_step, weighted_sum, human_filter, ours]
 network_conditions: [N0, N1, N2, NJ]
 seeds: 50
