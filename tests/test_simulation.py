@@ -62,7 +62,21 @@ def test_simulation_reports_explicit_qp_and_risk_diagnostics() -> None:
         "predicted_minimum_margin",
         "mean_conflict",
         "mean_intent_uncertainty",
+        "human_prediction_source",
+        "obstacle_prediction_source",
+        "scenario_obstacle_source",
     } <= row.keys()
+
+
+def test_simulation_uses_calibrated_models_after_causal_history_is_available() -> None:
+    result = run_simulation(
+        "crossing",
+        SimulationConfig(duration=0.5, method="ours", network_condition="N0", seed=3),
+    )
+    assert result.records[-1]["human_prediction_source"] == "scand-human-ar"
+    assert result.records[-1]["obstacle_prediction_source"] == "thor-calibrated-cv"
+    assert result.records[-1]["scenario_obstacle_source"]
+    assert float(result.records[-1]["mean_intent_uncertainty"]) > 0
 
 
 @pytest.mark.parametrize("scenario", SCENARIO_NAMES)

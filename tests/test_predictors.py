@@ -1,3 +1,5 @@
+import json
+
 import numpy as np
 
 from minimal_intervention_shared_control.evaluation.prediction_metrics import (
@@ -33,6 +35,30 @@ def test_human_ar_propagates_linear_model_covariance() -> None:
     model.residual_cov_ = np.eye(2)
     prediction = model.predict(np.zeros((1, 2)), horizon=2)
     np.testing.assert_allclose(prediction.covariance, [np.eye(2), np.eye(2) * 1.25])
+
+
+def test_human_ar_json_artifact_preserves_calibration_and_cross_time_covariance(
+    tmp_path,
+) -> None:
+    path = tmp_path / "model.json"
+    path.write_text(
+        json.dumps(
+            {
+                "order": 1,
+                "interval": 0.1,
+                "calibration_scale": 2.0,
+                "coefficients": [[0.5, 0.0], [0.0, 0.5], [0.0, 0.0]],
+                "residual_covariance": np.eye(2).tolist(),
+            }
+        ),
+        encoding="utf-8",
+    )
+    model = HumanAR.load(path)
+    covariance = model.joint_prediction_covariance(2)
+    np.testing.assert_allclose(covariance[:2, :2], 2.0 * np.eye(2))
+    np.testing.assert_allclose(covariance[:2, 2:], np.eye(2))
+    np.testing.assert_allclose(covariance[2:, 2:], 2.5 * np.eye(2))
+    assert np.linalg.eigvalsh(covariance).min() > 0
 
 
 def test_constant_velocity_prediction() -> None:

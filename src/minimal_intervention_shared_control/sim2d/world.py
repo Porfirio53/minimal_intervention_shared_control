@@ -5,13 +5,13 @@ from dataclasses import dataclass
 import numpy as np
 
 from ..types import FloatArray
-from .agents import DynamicObstacle
+from .agents import DynamicObstacle, TrajectoryObstacle
 
 
 @dataclass
 class World:
     state: FloatArray
-    obstacles: list[DynamicObstacle]
+    obstacles: list[DynamicObstacle | TrajectoryObstacle]
     robot_radius: float
 
     def advance_obstacles(self, dt: float) -> None:

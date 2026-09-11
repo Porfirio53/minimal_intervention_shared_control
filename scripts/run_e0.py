@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -150,11 +151,24 @@ def _run_scand(
         "test_runs": [run.run_id for run in test],
         "metrics": metrics,
         "limitations": [
-            "The current three-run subset is only a pipeline pilot.",
+            f"This is a selected {len(runs)}-run Jackal subset, not full SCAND.",
             "ADE/FDE are L2 distances in mixed control coordinates; component metrics retain physical units.",
+            "SCAND has no network-delay labels; closed-loop experiments inject delays separately.",
         ],
     }
     _write_json(output / "scand_metrics.json", result)
+    _write_json(
+        output / "scand_human_ar.json",
+        {
+            "model": "HumanAR",
+            "order": model.order,
+            "interval": interval,
+            "horizon": horizon,
+            "coefficients": model.coef_.tolist(),
+            "residual_covariance": model.residual_cov_.tolist(),
+            "calibration_scale": calibrator.scale,
+        },
+    )
     return result
 
 
@@ -295,6 +309,7 @@ def main() -> None:
     parser.add_argument("--scand", type=Path, default=Path("datasets/scand/processed"))
     parser.add_argument("--thor", type=Path, default=Path("datasets/thor/processed"))
     parser.add_argument("--output", type=Path, default=Path("results/e0"))
+    parser.add_argument("--artifact-output", type=Path, default=Path("artifacts/e0"))
     parser.add_argument("--seed", type=int, default=17)
     parser.add_argument("--interval", type=float, default=0.1)
     parser.add_argument("--horizon", type=int, default=15)
@@ -322,6 +337,9 @@ def main() -> None:
         horizon=args.horizon,
         stride=args.thor_stride,
     )
+    args.artifact_output.mkdir(parents=True, exist_ok=True)
+    for name in ("scand_human_ar.json", "scand_metrics.json", "thor_metrics.json"):
+        shutil.copy2(args.output / name, args.artifact_output / name)
     print(json.dumps({"scand": scand, "thor": thor}, indent=2, allow_nan=False))
 
 

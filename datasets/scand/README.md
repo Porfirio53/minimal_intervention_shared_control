@@ -44,3 +44,15 @@ uses Clearpath's PS4 configuration from the collection period: axes 1/0 are line
 buttons 4/5 are normal/turbo enable, and scales are 0.4/2.0 m/s and 1.4 rad/s. Splitting is
 performed by complete run (or leave-one-driver-out), never by randomly shuffling individual
 timestamps.
+
+The current study subset contains 13 Jackal runs: eight from driver A and all five available
+from driver B. E0 uses six A runs for training, two A runs for validation-only covariance
+calibration, and all five B runs for the held-out driver test. This is deliberately described
+as a selected Jackal subset, not as the full SCAND dataset. Run:
+
+```bash
+.venv/bin/python scripts/run_e0.py
+```
+
+SCAND supplies a prior over human `(v, omega)` commands. It does not contain real network
+delay labels, so the closed-loop experiments inject network conditions independently.

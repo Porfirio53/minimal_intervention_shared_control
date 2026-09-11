@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from ..types import FloatArray
+from ..types import FloatArray, GaussianTrajectory
 
 
 def wrap_angle(angle: float) -> float:
@@ -49,3 +49,40 @@ def jacobians(
         dtype=float,
     )
     return a, b
+
+
+def rollout_gaussian_controls(
+    state: FloatArray,
+    controls: FloatArray,
+    joint_control_covariance: FloatArray,
+    dt: float,
+) -> GaussianTrajectory:
+    """Propagate a joint Gaussian control forecast to positional ``Sigma_H``.
+
+    The mean follows the nonlinear Euler vehicle model. Covariance uses a first-order
+    linearization along that mean and retains cross-time control correlations.
+    """
+    controls_array = np.asarray(controls, dtype=float)
+    horizon = len(controls_array)
+    joint = np.asarray(joint_control_covariance, dtype=float)
+    if controls_array.ndim != 2 or controls_array.shape[1] != 2:
+        raise ValueError("controls must have shape (horizon, 2)")
+    if joint.shape != (2 * horizon, 2 * horizon):
+        raise ValueError("joint control covariance has an incompatible shape")
+    if not np.all(np.isfinite(joint)) or not np.allclose(joint, joint.T, atol=1e-10):
+        raise ValueError("joint control covariance must be finite and symmetric")
+    minimum_eigenvalue = float(np.linalg.eigvalsh(joint).min()) if horizon else 0.0
+    if minimum_eigenvalue < -1e-9:
+        raise ValueError("joint control covariance must be positive semidefinite")
+
+    states = rollout(state, controls_array, dt)
+    covariance = np.empty((horizon, 2, 2))
+    sensitivity = np.zeros((3, 2 * horizon))
+    for index, control in enumerate(controls_array):
+        a, b = jacobians(states[index], control, dt)
+        sensitivity = a @ sensitivity
+        sensitivity[:, 2 * index : 2 * index + 2] += b
+        position_sensitivity = sensitivity[:2]
+        block = position_sensitivity @ joint @ position_sensitivity.T
+        covariance[index] = 0.5 * (block + block.T)
+    return GaussianTrajectory(states[1:, :2], covariance)

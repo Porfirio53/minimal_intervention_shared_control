@@ -1,0 +1,41 @@
+{
+  "calibration_scale": 1.0,
+  "history_seconds": 0.5,
+  "horizon": 15,
+  "initial_std": 0.0001,
+  "interval": 0.1,
+  "metrics": {
+    "ade": 0.17795118296311566,
+    "coverage_90": 0.9461368653421633,
+    "coverage_95": 0.9679776546380141,
+    "coverage_99": 0.9879803577059963,
+    "fde": 0.3649501012495675,
+    "nll": -0.1303135806981046
+  },
+  "prediction_space": "position [m, m]",
+  "process_std": 0.23244554304632659,
+  "seed": 17,
+  "stride": 5,
+  "test_examples": 7399,
+  "test_recordings": [
+    "Exp_2_run_3",
+    "Exp_3_run_1",
+    "Exp_3_run_4"
+  ],
+  "train_examples": 19243,
+  "train_recordings": [
+    "Exp_1_run_1",
+    "Exp_1_run_2",
+    "Exp_1_run_3",
+    "Exp_1_run_4",
+    "Exp_2_run_2",
+    "Exp_2_run_5",
+    "Exp_3_run_2"
+  ],
+  "validation_examples": 6969,
+  "validation_recordings": [
+    "Exp_2_run_1",
+    "Exp_2_run_4",
+    "Exp_3_run_3"
+  ]
+}

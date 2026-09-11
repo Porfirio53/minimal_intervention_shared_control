@@ -15,3 +15,9 @@ starts a new track segment after missing observations or a timestamp gap. The no
 output is readable by `datasets.thor.load_thor_tsv`. Use the first 0.5-1.0 seconds to
 estimate velocity and retain future samples as ground truth; do not leak future samples
 into the predictor.
+
+E0 splits whole recordings before fitting or calibration. The WSL crossing scenario uses
+the held-out `Exp_2_run_3:Helmet_10:003` trajectory when its processed recording is present.
+It applies only a rigid rotation and translation, preserving timing, speed, curvature, and
+prediction difficulty. If the external data is absent, the run is marked
+`synthetic-fallback` rather than silently claiming a THÖR replay.

@@ -1,0 +1,48 @@
+{
+  "calibration_scale": 1.4235120803346595,
+  "horizon": 15,
+  "interval": 0.1,
+  "limitations": [
+    "This is a selected 13-run Jackal subset, not full SCAND.",
+    "ADE/FDE are L2 distances in mixed control coordinates; component metrics retain physical units.",
+    "SCAND has no network-delay labels; closed-loop experiments inject delays separately."
+  ],
+  "metrics": {
+    "ade": 0.3623420729958855,
+    "coverage_90": 0.9030713498188692,
+    "coverage_95": 0.9313592691762482,
+    "coverage_99": 0.9616737543970179,
+    "fde": 0.4755733511409432,
+    "mae_omega": 0.12483335853188816,
+    "mae_v": 0.30429888370433755,
+    "nll": 0.7119940553615142,
+    "rmse_omega": 0.2360056978695629,
+    "rmse_v": 0.47465419591109115
+  },
+  "order": 5,
+  "prediction_space": "control [v_m_per_s, omega_rad_per_s]",
+  "seed": 17,
+  "status": "dataset-run",
+  "test_examples": 6349,
+  "test_runs": [
+    "B_Jackal_GDC_Library_Sat_Nov_13_87",
+    "B_Jackal_Library_Sanjac_Sat_Nov_13_88",
+    "B_Jackal_REC_Footballfield_Sat_Nov_13_93",
+    "B_Jackal_Sanjac_Stadium_Sat_Nov_13_89",
+    "B_Jackal_Stadium_Sanjac_Sat_Nov_13_90"
+  ],
+  "train_runs": [
+    "A_Jackal_GDC_SAC_Fri_Oct_29_13",
+    "A_Jackal_Greg_GDC_Sat_Nov_13_95",
+    "A_Jackal_Libraryfront_Librarydoors_Thu_Nov_4_20",
+    "A_Jackal_REC_Abandon_Sat_Nov_13_92",
+    "A_Jackal_SAC_GDC_Fri_Oct_29_14",
+    "A_Jackal_SAC_SACindoor_Fri_Oct_29_15"
+  ],
+  "training_windows": 1813,
+  "validation_examples": 571,
+  "validation_runs": [
+    "A_Jackal_Fountain_Mccombs_Thu_Oct_28_6",
+    "A_Jackal_GDC_GDC_Fri_Oct_29_11"
+  ]
+}
