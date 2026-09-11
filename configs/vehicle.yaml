@@ -1,0 +1,11 @@
+dt: 0.02
+shared_control_period: 0.05
+prediction_dt: 0.1
+horizon: 15
+wheelbase: 0.43
+robot_radius: 0.32
+control_limits:
+  v_min: 0.0
+  v_max: 1.2
+  omega_min: -1.8
+  omega_max: 1.8

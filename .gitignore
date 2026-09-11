@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+results/
+datasets/scand/raw/
+datasets/scand/processed/
+datasets/thor/raw/
+datasets/thor/processed/

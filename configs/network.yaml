@@ -1,0 +1,5 @@
+conditions:
+  N0: {downlink_mean: 0.0, uplink_mean: 0.0, jitter_std: 0.0, rho: 0.0, max_delay: 0.0, loss: 0.0}
+  N1: {downlink_mean: 0.1, uplink_mean: 0.1, jitter_std: 0.015, rho: 0.4, max_delay: 0.3, loss: 0.0}
+  N2: {downlink_mean: 0.25, uplink_mean: 0.25, jitter_std: 0.025, rho: 0.5, max_delay: 0.65, loss: 0.0}
+  NJ: {downlink_mean: 0.25, uplink_mean: 0.25, jitter_std: 0.08, rho: 0.85, max_delay: 0.8, loss: 0.025}

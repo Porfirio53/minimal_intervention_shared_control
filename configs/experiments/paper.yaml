@@ -1,0 +1,6 @@
+duration: 12.0
+scenarios: [bend, crossing, conflict, network_anomaly]
+methods: [delay_agreement, single_step, weighted_sum, human_filter, ours]
+network_conditions: [N0, N1, N2, NJ]
+seeds: 50
+paired: true

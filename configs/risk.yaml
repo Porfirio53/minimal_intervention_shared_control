@@ -1,0 +1,16 @@
+clearance: 0.08
+chance_kappa: 2.326347874
+execution_position_std: 0.08
+obstacle_position_std: 0.06
+obstacle_process_std: 0.08
+assume_execution_obstacle_independence: true
+cbf_gamma: 0.8
+cbf_lookahead: 0.18
+state_position_std: 0.015
+state_velocity_std: 0.04
+relative_acceleration_bound: 0.6
+clock_error_bound: 0.005
+model_error_bound: 0.01
+actuation_error_bound: 0.01
+state_confidence_beta: 2.448
+lexicographic_tolerance: 0.001
