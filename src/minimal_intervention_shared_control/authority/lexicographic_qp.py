@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 import osqp
 from scipy import sparse
+from scipy.optimize import linprog
 
 
 @dataclass(frozen=True)
@@ -205,13 +206,25 @@ class LexicographicAuthority:
         lower = np.r_[b, np.zeros(horizon)]
         upper = np.r_[np.full(len(g), np.inf), np.ones(horizon)]
 
-        first, stage1_status, _ = self._solve(
-            sparse.csc_matrix((horizon, horizon)),
-            weights,
-            constraints,
-            lower,
-            upper,
-        )
+        if np.all(b <= 0.0):
+            # Positive budget weights and alpha >= 0 certify this optimum exactly.
+            first, stage1_status = np.zeros(horizon), "solved; zero-budget certificate"
+        else:
+            first, stage1_status, _ = self._solve(
+                sparse.csc_matrix((horizon, horizon)),
+                weights,
+                constraints,
+                lower,
+                upper,
+            )
+            if "solved" not in stage1_status and "infeasible" not in stage1_status:
+                # A degenerate LP reaching an ADMM iteration limit is not a
+                # geometric infeasibility. Retry the identical LP with HiGHS.
+                exact = linprog(
+                    weights, A_ub=-g, b_ub=-b, bounds=(0.0, 1.0), method="highs"
+                )
+                if exact.success:
+                    first, stage1_status = exact.x, "solved; highs retry"
         first_valid = first is not None and "solved" in stage1_status
         if first_valid:
             first = np.clip(first, 0.0, 1.0)

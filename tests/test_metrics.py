@@ -28,3 +28,12 @@ def test_collision_prevents_task_success_and_event_times_are_reported() -> None:
     assert not metrics["success"]
     assert metrics["first_authority_time"] == 0.2
     assert metrics["first_filter_time"] == 0.2
+
+
+def test_total_execution_modification_is_not_sum_of_layer_modifications() -> None:
+    record = _record(0.1, 1.0, 0.5, 0.2)
+    record["nominal"] = [0.8, 0.0]
+    metrics = trajectory_metrics([record], 0.1, np.array([1.0, 0.0, 0.0]))
+    assert metrics["nominal_modification"] > 0
+    assert metrics["filter_modification"] > 0
+    assert metrics["executed_modification"] == 0

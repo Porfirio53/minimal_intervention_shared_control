@@ -6,6 +6,7 @@ from scipy import sparse
 
 from ..authority.lexicographic_qp import (
     AuthorityResult,
+    LexicographicAuthority,
     budget_weights,
     secondary_objective_matrices,
 )
@@ -77,6 +78,15 @@ def weighted_sum_authority(
             stage1_status=status,
         )
     alpha = np.clip(np.asarray(result.x), 0.0, 1.0)
+    if not LexicographicAuthority._satisfies(alpha, constraints, lower, upper):
+        return AuthorityResult(
+            np.zeros(horizon),
+            f"{status}; constraint residual; fallback",
+            0.0,
+            0.0,
+            True,
+            stage1_status=f"{status}; constraint residual",
+        )
     return AuthorityResult(
         alpha,
         status,

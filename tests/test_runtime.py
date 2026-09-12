@@ -3,11 +3,14 @@ import inspect
 import numpy as np
 import pytest
 
+import minimal_intervention_shared_control.runtime as runtime_module
 from minimal_intervention_shared_control.network.timestamp_buffer import CommandEnvelope
+from minimal_intervention_shared_control.predictors.human_ar import HumanAR
 from minimal_intervention_shared_control.runtime import (
     RuntimeConfig,
     SharedControlRuntime,
     StepInput,
+    _human_candidate_controls,
 )
 from minimal_intervention_shared_control.safety.robust_cbf_qp import RobustCBFFilter
 from minimal_intervention_shared_control.types import Control
@@ -125,3 +128,65 @@ def test_upper_runtime_updates_follow_the_shared_control_period() -> None:
     assert run(0.0).upper_updated
     assert not run(0.02).upper_updated
     assert run(0.05).upper_updated
+
+
+def test_operating_point_anchor_preserves_a_constant_received_command() -> None:
+    model = HumanAR(order=1)
+    model.coef_ = np.array([[0.9, 0.0], [0.0, 0.8], [0.2, -0.1]])
+    command = Control(0.55, 0.3)
+    controls, covariance, _ = _human_candidate_controls(
+        command,
+        5,
+        model,
+        command.as_array()[None, :],
+        anchor_prediction=True,
+        control_lower=np.array([0.0, -1.8]),
+        control_upper=np.array([1.2, 1.8]),
+    )
+    np.testing.assert_allclose(controls, np.tile(command.as_array(), (5, 1)))
+    assert covariance is not None
+    assert np.linalg.eigvalsh(covariance).min() >= -1e-12
+
+
+def test_candidate_saturation_keeps_received_command_and_bounds_only_forecast() -> None:
+    model = HumanAR(order=1)
+    model.coef_ = np.array([[1.0, 0.0], [0.0, 1.0], [2.0, -3.0]])
+    command = Control(0.4, 0.1)
+    controls, _, _ = _human_candidate_controls(
+        command,
+        4,
+        model,
+        command.as_array()[None, :],
+        control_lower=np.array([0.0, -1.8]),
+        control_upper=np.array([1.2, 1.8]),
+    )
+    np.testing.assert_allclose(controls[0], command.as_array())
+    np.testing.assert_allclose(controls[1:], np.tile([1.2, -1.8], (3, 1)))
+
+
+def test_reference_shift_uses_elapsed_seconds_not_one_prediction_step(
+    monkeypatch,
+) -> None:
+    runtime = SharedControlRuntime(RuntimeConfig(horizon=3, method="human_filter"))
+    runtime.linearization_reference = np.array([0.0, 0.5, 1.0])
+    runtime.reference_time = 0.0
+    seen = []
+    original = runtime_module._build_prediction_problem
+
+    def capture(*args, **kwargs):
+        seen.append(args[8].copy())
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(runtime_module, "_build_prediction_problem", capture)
+    runtime.step(
+        StepInput(
+            now=0.05,
+            state=np.zeros(3),
+            human_commands=(),
+            default_human=Control(0.2, 0),
+            autonomous_controls=np.tile([0.6, 0.0], (3, 1)),
+            obstacles=(),
+            safety_observations=(),
+        )
+    )
+    np.testing.assert_allclose(seen[0], [0.25, 0.75, 1.0])

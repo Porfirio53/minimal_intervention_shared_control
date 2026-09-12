@@ -13,8 +13,11 @@ clock_error_bound: 0.005
 model_error_bound: 0.01
 actuation_error_bound: 0.01
 state_confidence_beta: 2.448
-lexicographic_tolerance: 0.01
+lexicographic_tolerance: 0.05
 secondary_smooth_weight: 0.2
 secondary_input_weight: 1.0
-secondary_task_weight: 0.0
+secondary_task_weight: 10.0
+# Refinement selected on development seed 940001; see refinement_selection.json.
+weighted_sum_intervention_weight: 100.0
+anchor_human_prediction: false
 fallback_relinearization_alpha: 1.0

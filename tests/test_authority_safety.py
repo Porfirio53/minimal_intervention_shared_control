@@ -84,6 +84,26 @@ def test_lexicographic_qp_reports_infeasible_problem() -> None:
     np.testing.assert_allclose(result.alpha, 0.0)
 
 
+def test_iteration_limit_retries_identical_linear_program(monkeypatch) -> None:
+    allocator = LexicographicAuthority(tolerance=0.0)
+    original = allocator._solve
+    calls = 0
+
+    def limited(p, q, a, lower, upper):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return np.zeros(2), "maximum iterations reached", 0.0
+        return original(p, q, a, lower, upper)
+
+    monkeypatch.setattr(allocator, "_solve", limited)
+    result = allocator.solve(np.eye(2), np.array([0.4, 0.6]))
+    assert not result.used_fallback
+    assert "highs retry" in result.stage1_status
+    assert result.minimum_budget == pytest.approx(0.5)
+    np.testing.assert_allclose(result.alpha, [0.4, 0.6], atol=2e-6)
+
+
 def test_authority_constraint_builder_enforces_hard_control_limits() -> None:
     human = np.array([[0.2, -0.5], [0.2, -0.5]])
     autonomous = np.array([[0.8, 0.5], [0.8, 0.5]])

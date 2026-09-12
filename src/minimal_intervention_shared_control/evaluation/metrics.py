@@ -20,6 +20,7 @@ def trajectory_metrics(
     scales = np.array([1.2, 1.8])
     normalized_nominal = np.linalg.norm((nominal - human) / scales, axis=1)
     normalized_filter = np.linalg.norm((filtered - nominal) / scales, axis=1)
+    normalized_executed = np.linalg.norm((filtered - human) / scales, axis=1)
     clearances = np.array([row["clearance"] for row in records], dtype=float)
     collision = bool(np.any(clearances <= 0.0))
     reached_goal = bool(np.linalg.norm(states[-1, :2] - goal[:2]) <= success_radius)
@@ -33,6 +34,9 @@ def trajectory_metrics(
         "intervention_budget": float(dt * np.sum(alpha) / duration),
         "nominal_modification": float(dt * np.sum(normalized_nominal) / duration),
         "filter_modification": float(dt * np.sum(normalized_filter) / duration),
+        "executed_modification": float(np.mean(normalized_executed)),
+        "authority_event": bool(len(authority_indices)),
+        "filter_event": bool(len(filter_indices)),
         "authority_total_variation": float(np.sum(np.abs(np.diff(alpha)))),
         "filter_trigger_rate": float(
             np.mean([bool(row["filter_triggered"]) for row in records])

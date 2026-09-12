@@ -1,0 +1,27 @@
+{
+  "stage": "frozen_before_holdout",
+  "development_seeds": [940001],
+  "holdout_seeds": [950001, 950002],
+  "development_networks": ["N0", "NJ"],
+  "holdout_networks": ["N0", "N1", "N2", "NJ"],
+  "scenarios": ["bend", "crossing", "conflict_both_safe", "conflict_human_unsafe", "conflict_autonomy_unsafe", "conflict_blend_unsafe", "network_anomaly"],
+  "duration": 20.0,
+  "formal_seeds_used": false,
+  "ranking": ["minimum collisions", "maximum successes", "minimum executed modification", "minimum authority budget"],
+  "selected": {
+    "anchor_human_prediction": false,
+    "lexicographic_tolerance": 0.05,
+    "secondary_smooth_weight": 0.2,
+    "secondary_input_weight": 1.0,
+    "secondary_task_weight": 10.0,
+    "weighted_sum_intervention_weight": 100.0
+  },
+  "weighted_sum_candidates": [0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000],
+  "development_files": ["corrected", "anchored", "task1", "anchor_task1", "smooth2", "budget05_task10", "anchor_budget10_task10", "budget03_task5", "budget03_task10"],
+  "weighted_sum_files": ["weighted_task10_sweep", "weighted_task10_extension"],
+  "development_ours": {"runs": 14, "collisions": 0, "successes": 13, "intervention_budget": 0.2378666707773885, "executed_modification": 0.3760373981731799},
+  "development_weighted_sum": {"runs": 14, "collisions": 0, "successes": 13, "intervention_budget": 0.2572815961312717, "executed_modification": 0.43838386701629956},
+  "figures": ["crossing/N0/950001: spatial trajectory and speed", "conflict_human_unsafe/N0/950001: spatial trajectory and turning commands"],
+  "figure_selection_note": "The second scenario was changed from blend_unsafe during development because human_unsafe revealed the diagnosed steering-cancellation deadlock. Both figure cases were fixed before holdout.",
+  "scope": "Small local validation after development, not a replacement for the 7000-run formal experiment. Shared component fixes apply to every baseline."
+}

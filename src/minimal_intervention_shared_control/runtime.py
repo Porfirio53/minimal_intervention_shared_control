@@ -119,12 +119,25 @@ def _human_candidate_controls(
     horizon: int,
     model: HumanAR | None,
     history: np.ndarray,
+    *,
+    anchor_prediction: bool = False,
+    control_lower: np.ndarray | None = None,
+    control_upper: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray | None, str]:
     if model is not None and len(history) >= model.order:
         if horizon == 1:
             return control.as_array()[None, :], np.zeros((2, 2)), "scand-human-ar"
         prediction = model.predict(history[-model.order :], horizon - 1)
-        mean = np.vstack([control.as_array(), prediction.mean])
+        future = prediction.mean
+        if anchor_prediction:
+            # Remove the fitted operating-point drift, preserving the response to
+            # observed command changes. Only already received commands are used.
+            held_history = np.tile(history[-1], (model.order, 1))
+            held_prediction = model.predict(held_history, horizon - 1).mean
+            future = control.as_array() + future - held_prediction
+        if control_lower is not None and control_upper is not None:
+            future = np.clip(future, control_lower, control_upper)
+        mean = np.vstack([control.as_array(), future])
         joint = np.zeros((2 * horizon, 2 * horizon))
         joint[2:, 2:] = model.joint_prediction_covariance(horizon - 1)
         return mean, joint, "scand-human-ar"
@@ -316,6 +329,7 @@ def _allocate(
     task_sensitivity: np.ndarray,
     task_positions: np.ndarray,
     task_weight: float,
+    weighted_sum_intervention_weight: float,
 ) -> AuthorityResult:
     horizon = len(human)
     if method == "human_filter":
@@ -357,6 +371,7 @@ def _allocate(
             task_sensitivity=task_sensitivity,
             task_positions=task_positions,
             task_weight=task_weight,
+            intervention_weight=weighted_sum_intervention_weight,
         )
     return allocator.solve(
         matrix,
@@ -450,6 +465,7 @@ class SharedControlRuntime:
         # With no previous feasible solution, initialize the local model at the
         # minimum-intervention candidate. Later cycles shift the last feasible alpha.
         self.linearization_reference = np.zeros(self.config.horizon)
+        self.reference_time: float | None = None
         self.allocation = _fixed_authority_result(self.authority, "not-run")
         self.next_shared_update: float | None = None
         self.human_history: list[np.ndarray] = []
@@ -554,6 +570,21 @@ class SharedControlRuntime:
                     self.config.horizon,
                     self.human_model,
                     np.asarray(self.human_history),
+                    anchor_prediction=bool(
+                        self.risk.get("anchor_human_prediction", False)
+                    ),
+                    control_lower=np.array(
+                        [
+                            self.vehicle["control_limits"]["v_min"],
+                            self.vehicle["control_limits"]["omega_min"],
+                        ]
+                    ),
+                    control_upper=np.array(
+                        [
+                            self.vehicle["control_limits"]["v_max"],
+                            self.vehicle["control_limits"]["omega_max"],
+                        ]
+                    ),
                 )
             )
             human_intent = (
@@ -579,7 +610,17 @@ class SharedControlRuntime:
                     self.obstacle_predictor,
                 )
 
-            prediction = build_prediction(self.linearization_reference)
+            if self.reference_time is not None:
+                grid = np.arange(self.config.horizon, dtype=float)
+                elapsed_steps = (
+                    value.now - self.reference_time
+                ) / self.config.prediction_dt
+                reference = np.interp(
+                    grid + elapsed_steps, grid, self.linearization_reference
+                )
+            else:
+                reference = self.linearization_reference
+            prediction = build_prediction(reference)
             started = time.perf_counter()
             allocation = _allocate(
                 self.config.method,
@@ -595,6 +636,7 @@ class SharedControlRuntime:
                 prediction.affine_prediction.sensitivity[:, :, :2],
                 prediction.risk_tube.autonomous_positions,
                 float(self.risk.get("secondary_task_weight", 0.0)),
+                float(self.risk.get("weighted_sum_intervention_weight", 2.0)),
             )
             if allocation.used_fallback and self.config.method in {
                 "single_step",
@@ -610,7 +652,7 @@ class SharedControlRuntime:
                     )
                 alternate_value = (
                     retry_alpha
-                    if float(np.mean(self.linearization_reference)) < 0.5
+                    if float(np.mean(reference)) < 0.5
                     else 1.0 - retry_alpha
                 )
                 alternate_reference = np.full(self.config.horizon, alternate_value)
@@ -629,6 +671,7 @@ class SharedControlRuntime:
                     alternate_prediction.affine_prediction.sensitivity[:, :, :2],
                     alternate_prediction.risk_tube.autonomous_positions,
                     float(self.risk.get("secondary_task_weight", 0.0)),
+                    float(self.risk.get("weighted_sum_intervention_weight", 2.0)),
                 )
                 relinearized = True
                 if not alternate_allocation.used_fallback:
@@ -639,9 +682,8 @@ class SharedControlRuntime:
             self.authority = self.allocation.alpha
             self.last_tube = prediction.risk_tube
             if not self.allocation.used_fallback:
-                self.linearization_reference = np.r_[
-                    self.authority[1:], self.authority[-1]
-                ]
+                self.linearization_reference = self.authority.copy()
+                self.reference_time = value.now
             while self.next_shared_update <= value.now + 1e-12:
                 self.next_shared_update += self.config.shared_control_period
 
